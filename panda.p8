@@ -8,15 +8,14 @@ player.x = 20
 player.y = 80
 player.sprite = 0
 player.speed = 1
-player.dancing = false
 player.jumping = false
 player.velocityx = .5;
 player.velocityy = 5;
 player.velocityymax = 5;
 player.direction = 1
+player.startjumpy = 80
 player.walkingsprites = {0, nil, nil, 2, nil, nil}
 player.jumpingsprites = {6, nil, nil, 8, nil, nil}
-player.dancingsprites = {32, nil, nil, 34, nil, nil}
 
 cameraframe = {}
 cameraframe.x = 0
@@ -38,11 +37,16 @@ end
 
 function _draw()
   cls()
-  
+
   map(0,0,0,0,16,16)
   map(0,0,128,0,16,16)
   map(0,0,256,0,16,16)
-
+  map(0,0,0,-120,16,16)  
+  map(0,0,128,-120,16,16)  
+  map(0,14,0,120,16,1) 
+  map(0,14,128,120,16,1)  
+  map(0,14,256,120,16,1)  
+  
   for block in all(blocks) do
       spr(block.sprite, block.x, block.y, 2, 2)
   end
@@ -51,16 +55,13 @@ function _draw()
   camera(cameraframe.x,cameraframe.y)
 end
 
-function jump(entity)
+function fall(entity)
     if entity.direction == 1 and entity.x + 14 < levelend then
         entity.x += entity.velocityx
     elseif not entity.direction == 0 and entity.x + 2 > 0 then
         entity.x -= entity.velocityx
     end
-    fall(entity)
-end
 
-function fall(entity)
     entity.y -= entity.velocityy;
     entity.velocityy -= gravity;
 end
@@ -80,21 +81,22 @@ function moveplayer()
         if player.direction == -1 and player.x > -2 or player.direction == 1 and player.x < levelend then
           player.x += player.speed
         end
-        updatecamera()
     end
 
     if btn(5) or btn(2) then 
       if not player.jumping then
           sfx(00)
           player.jumping = true
+          player.startjumpy = player.y
       end
     end
 
     if player.jumping then
-        jump(player)
+        fall(player)
     end
     updateplayersprite()
     checkplayergravity()
+    updatecamera()
 end
 
 function updateplayersprite()
@@ -102,9 +104,7 @@ function updateplayersprite()
         player.sprite = 4
     else
         if frameindex == 1 or frameindex == 4 then
-            if player.dancing then
-                player.sprite = player.dancingsprites[frameindex]
-            elseif not player.jumping then
+            if not player.jumping then
                 player.sprite = player.walkingsprites[frameindex]
             else
                 player.sprite = player.jumpingsprites[frameindex]
@@ -119,17 +119,21 @@ function updateplayersprite()
 end
 
 function updatecamera()
-    if (player.direction == 1 and cameraframe.x + player.speed <= player.x - 16) or (player.direction == -1 and cameraframe.x - player.speed > 0) then
-        cameraframe.x += player.speed
+    if (player.moving) then
+        if (player.direction == 1 and cameraframe.x + player.speed <= player.x - 16) or (player.direction == -1 and cameraframe.x - player.speed > 0) then
+            cameraframe.x += player.speed
+        end
     end
+
 end
 
 function checkplayergravity()
     -- first check if player is standing on something
-    onblock = false;
+    onblock = false
     for block in all(blocks) do
       if player.y + 16 >= block.y - 4 and player.y + 16 <= block.y + 4 and player.x > block.x - 12 and player.x < block.x + 12  then
           player.jumping = false
+          player.startjumpy = player.y
           player.y = block.y - 16
           onblock = true
           player.velocityy = player.velocityymax; --reset velocityy
@@ -139,23 +143,38 @@ function checkplayergravity()
     -- if not she must be falling
     if not onblock and not player.jumping then
         player.jumping = true
-        player.velocityy = -5  
+        if player.velocityy > -5 then
+            player.velocityy -= 1
+        end  
+    end
+
+
+    if player.jumping and player.y < 28 then
+        --cameraframe.y -= player.velocityy
+    elseif player.velocityy < 0 and player.velocityy - player.velocityy < 0  then
+        --cameraframe.y += player.velocityy
+    else
+        --cameraframe.y = 0
     end
 end
 
 function addblocks()
-    
-    xval = 0;
+
+    xval = 0
+    yval = 96
+
+    endx = 0
+    endy = -128
 
     for var=1,8 do
         block = {}
         block.x = xval
-        block.y = 96
+        block.y = yval
         block.sprite = 73
 
         add(blocks, block)
 
-        xval += 16;
+        xval += 16
     end
 
     block = {}
